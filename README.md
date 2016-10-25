@@ -2,7 +2,7 @@
 Create dynamic classes at runtime.  
 
 ```
-Install-Package SmartUtils
+Install-Package DynamicClass
 ```  
   
 ## Usage  
