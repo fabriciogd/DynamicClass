@@ -31,6 +31,34 @@ namespace DynamicClass
         {
             return GetDynamicProperty<object>(propertyName);
         }
+
+        /// <summary>
+        /// Sets the dynamic property by name.
+        /// </summary>
+        /// <typeparam name="T">The type.</typeparam>
+        /// <param name="propertyName">Name of the property.</param>
+        /// <param name="value">The value.</param>
+        public void SetDynamicProperty<T>(string propertyName, T value)
+        {
+            var type = GetType();
+            var propInfo = type.GetProperty(propertyName);
+
+            propInfo.SetValue(this, value, null);
+        }
+
+        /// <summary>
+        /// Sets the dynamic property by name.
+        /// </summary>
+        /// <param name="propertyName">Name of the property.</param>
+        /// <param name="value">The value.</param>
+        public void SetDynamicProperty(string propertyName, object value)
+        {
+            var type = GetType();
+            var propInfo = type.GetProperty(propertyName);
+
+            propInfo.SetValue(this, value, null);
+        }
+
         public override string ToString()
         {
             PropertyInfo[] props = this.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);

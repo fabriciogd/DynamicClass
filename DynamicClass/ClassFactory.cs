@@ -6,6 +6,9 @@
     using System.Reflection.Emit;
     using System.Threading;
 
+    /// <summary>
+    /// A factory to create dynamic classes
+    /// </summary>
     public class ClassFactory
     {
         private static volatile ClassFactory instance;
@@ -53,6 +56,11 @@
             return dynamicModule;
         }
 
+        /// <summary>
+        /// This method creates a new class with a given set of public properties and returns the System.Type object for the newly created class.
+        /// <param name="properties">A list of <see cref="DynamicProperty"/></param> 
+        /// <returns>Type</returns>
+        /// </summary>
         public Type Create(IEnumerable<DynamicProperty> properties)
         {
             rwLock.AcquireReaderLock(Timeout.Infinite);
@@ -92,8 +100,8 @@
                    TypeAttributes.Public, typeof(DynamicClass));
 
             FieldInfo[] fields = GenerateProperties(tb, properties);
-            this.GenerateEquals(tb, fields);
-            this.GenerateGetHashCode(tb, fields);
+
+            this.GenerateMethods(tb, fields);
 
             return tb.CreateType();
         }
@@ -101,25 +109,29 @@
         public FieldInfo[] GenerateProperties(TypeBuilder tb, DynamicProperty[] properties)
         {
             FieldInfo[] fields = new FieldBuilder[properties.Length];
+
             for (int i = 0; i < properties.Length; i++)
             {
                 DynamicProperty dp = properties[i];
-                FieldBuilder fb = tb.DefineField("_" + dp.Name, dp.Type, FieldAttributes.Private);
+
+                // Field
+                FieldBuilder fb = tb.DefineField($"<{properties[i].Name}>i__Field", dp.Type, FieldAttributes.Private);
+
+                // Property
                 PropertyBuilder pb = tb.DefineProperty(dp.Name, PropertyAttributes.HasDefault, dp.Type, null);
 
-                MethodBuilder mbGet = tb.DefineMethod("get_" + dp.Name,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    dp.Type, Type.EmptyTypes);
+                // Get()
+                MethodBuilder getter = tb.DefineMethod($"get_{dp.Name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, CallingConventions.HasThis, dp.Type, Type.EmptyTypes);
 
-                ILGenerator genGet = mbGet.GetILGenerator();
-                genGet.Emit(OpCodes.Ldarg_0);
-                genGet.Emit(OpCodes.Ldfld, fb);
-                genGet.Emit(OpCodes.Ret);
+                ILGenerator genGetter = getter.GetILGenerator();
+                genGetter.Emit(OpCodes.Ldarg_0);
+                genGetter.Emit(OpCodes.Ldfld, fb);
+                genGetter.Emit(OpCodes.Ret);
 
-                MethodBuilder mbSet = tb.DefineMethod("set_" + dp.Name,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    null, new Type[] { dp.Type });
+                pb.SetGetMethod(getter);
 
+                // Set()
+                MethodBuilder mbSet = tb.DefineMethod($"set_{dp.Name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, CallingConventions.HasThis, null, new Type[] { dp.Type });
 
                 mbSet.DefineParameter(1, ParameterAttributes.In, dp.Name);
 
@@ -129,79 +141,77 @@
                 genSet.Emit(OpCodes.Stfld, fb);
                 genSet.Emit(OpCodes.Ret);
 
-                pb.SetGetMethod(mbGet);
                 pb.SetSetMethod(mbSet);
 
                 fields[i] = fb;
             }
+
             return fields;
         }
 
-        private void GenerateEquals(TypeBuilder tb, FieldInfo[] fields)
+        private void GenerateMethods(TypeBuilder tb, FieldInfo[] fields)
         {
-            MethodBuilder mb = tb.DefineMethod("Equals",
-                MethodAttributes.Public | MethodAttributes.ReuseSlot |
-                MethodAttributes.Virtual | MethodAttributes.HideBySig,
-                typeof(bool), new Type[] { typeof(object) });
+            // Equals()
+            MethodBuilder equals = tb.DefineMethod("Equals", MethodAttributes.Public | MethodAttributes.ReuseSlot | MethodAttributes.Virtual | MethodAttributes.HideBySig, CallingConventions.HasThis, typeof(bool), new Type[] { typeof(object) });
 
-            ILGenerator gen = mb.GetILGenerator();
-            LocalBuilder other = gen.DeclareLocal(tb);
-            Label next = gen.DefineLabel();
+            ILGenerator genEquals = equals.GetILGenerator();
+            genEquals.DeclareLocal(tb.AsType());
 
-            gen.Emit(OpCodes.Ldarg_1);
-            gen.Emit(OpCodes.Isinst, tb);
-            gen.Emit(OpCodes.Stloc, other);
-            gen.Emit(OpCodes.Ldloc, other);
-            gen.Emit(OpCodes.Brtrue_S, next);
-            gen.Emit(OpCodes.Ldc_I4_0);
-            gen.Emit(OpCodes.Ret);
-            gen.MarkLabel(next);
+            genEquals.Emit(OpCodes.Ldarg_1);
+            genEquals.Emit(OpCodes.Isinst, tb.AsType());
+            genEquals.Emit(OpCodes.Stloc_0);
+            genEquals.Emit(OpCodes.Ldloc_0);
 
-            foreach (FieldInfo field in fields)
+            Label equalsLabel = genEquals.DefineLabel();
+
+            // GetHashCode();
+            MethodBuilder getHashCode = tb.DefineMethod("GetHashCode", MethodAttributes.Public | MethodAttributes.ReuseSlot | MethodAttributes.Virtual | MethodAttributes.HideBySig, CallingConventions.HasThis, typeof(int), Type.EmptyTypes);
+
+            ILGenerator genGetHashCode = getHashCode.GetILGenerator();
+            genGetHashCode.DeclareLocal(typeof(int));
+
+            int initHash = 0;
+
+            for (int i = 0; i < fields.Length; i++)
+                initHash = unchecked(initHash * (-1521134295) + fields[i].Name.GetHashCode());
+
+            genGetHashCode.Emit(OpCodes.Ldc_I4, initHash);
+
+            for (int i = 0; i < fields.Length; i++)
             {
-                Type ft = field.FieldType;
+                Type ft = fields[i].FieldType;
+
                 Type ct = typeof(EqualityComparer<>).MakeGenericType(ft);
-                next = gen.DefineLabel();
-                gen.EmitCall(OpCodes.Call, ct.GetMethod("get_Default"), null);
-                gen.Emit(OpCodes.Ldarg_0);
-                gen.Emit(OpCodes.Ldfld, field);
-                gen.Emit(OpCodes.Ldloc, other);
-                gen.Emit(OpCodes.Ldfld, field);
-                gen.EmitCall(OpCodes.Callvirt, ct.GetMethod("Equals", new Type[] { ft, ft }), null);
-                gen.Emit(OpCodes.Brtrue_S, next);
-                gen.Emit(OpCodes.Ldc_I4_0);
-                gen.Emit(OpCodes.Ret);
-                gen.MarkLabel(next);
+                MethodInfo defaultEqualityComparer = ct.GetMethod("get_Default");
+
+                // Equals()
+                genEquals.Emit(OpCodes.Brfalse, equalsLabel);
+                genEquals.Emit(OpCodes.Call, defaultEqualityComparer);
+                genEquals.Emit(OpCodes.Ldarg_0);
+                genEquals.Emit(OpCodes.Ldfld, fields[i]);
+                genEquals.Emit(OpCodes.Ldloc_0);
+                genEquals.Emit(OpCodes.Ldfld, fields[i]);
+                genEquals.Emit(OpCodes.Callvirt, ct.GetMethod("Equals", new Type[] { ft, ft }));
+
+                // GetHashCode();
+                genGetHashCode.Emit(OpCodes.Stloc_0);
+                genGetHashCode.Emit(OpCodes.Ldc_I4, -1521134295);
+                genGetHashCode.Emit(OpCodes.Ldloc_0);
+                genGetHashCode.Emit(OpCodes.Mul);
+                genGetHashCode.Emit(OpCodes.Call, defaultEqualityComparer);
+                genGetHashCode.Emit(OpCodes.Ldarg_0);
+                genGetHashCode.Emit(OpCodes.Ldfld, fields[i]);
+                genGetHashCode.Emit(OpCodes.Callvirt, ct.GetMethod("GetHashCode", new Type[] { ft }));
+                genGetHashCode.Emit(OpCodes.Add);
             }
 
-            gen.Emit(OpCodes.Ldc_I4_1);
-            gen.Emit(OpCodes.Ret);
-        }
+            genEquals.Emit(OpCodes.Ret);
+            genEquals.MarkLabel(equalsLabel);
+            genEquals.Emit(OpCodes.Ldc_I4_0);
 
-        private void GenerateGetHashCode(TypeBuilder tb, FieldInfo[] fields)
-        {
-            MethodBuilder mb = tb.DefineMethod("GetHashCode",
-                MethodAttributes.Public | MethodAttributes.ReuseSlot |
-                MethodAttributes.Virtual | MethodAttributes.HideBySig,
-                typeof(int), Type.EmptyTypes);
-
-            ILGenerator gen = mb.GetILGenerator();
-
-            gen.Emit(OpCodes.Ldc_I4_0);
-
-            foreach (FieldInfo field in fields)
-            {
-                Type ft = field.FieldType;
-                Type ct = typeof(EqualityComparer<>).MakeGenericType(ft);
-                gen.EmitCall(OpCodes.Call, ct.GetMethod("get_Default"), null);
-                gen.Emit(OpCodes.Ldarg_0);
-                gen.Emit(OpCodes.Ldfld, field);
-                gen.EmitCall(OpCodes.Callvirt, ct.GetMethod("GetHashCode", new Type[] { ft }), null);
-                gen.Emit(OpCodes.Xor);
-            }
-
-            gen.Emit(OpCodes.Ret);
+            genGetHashCode.Emit(OpCodes.Stloc_0);
+            genGetHashCode.Emit(OpCodes.Ldloc_0);
+            genGetHashCode.Emit(OpCodes.Ret);
         }
     }
-
 }

@@ -17,9 +17,9 @@
                 new DynamicProperty("Nome", typeof(System.String))
             };
 
-            Type @class = ClassFactory.Instance.Create(properties);
+            Type instance = ClassFactory.Instance.Create(properties);
 
-            Assert.AreEqual(2, @class.GetProperties().Count());
+            Assert.AreEqual(2, instance.GetProperties().Count());
         }
 
         [TestMethod]
@@ -31,9 +31,11 @@
                 new DynamicProperty("Nome", typeof(System.String))
             };
 
-            Type @class = ClassFactory.Instance.Create(properties);
+            var t = ClassFactory.Instance.Create(properties);
 
-            Assert.AreNotEqual(0, @class.GetHashCode());
+            var instance = (dynamic)Activator.CreateInstance(t);
+
+            Assert.AreNotEqual(0, instance.GetHashCode());
         }
     }
 }
