@@ -9,7 +9,7 @@
     public class DynamicClass
     {
         [TestMethod]
-        public void Dynamic_properties()
+        public void Dynamic_class_with_properties()
         {
             var properties = new List<DynamicProperty>()
             {
@@ -23,7 +23,7 @@
         }
 
         [TestMethod]
-        public void Dynamic_properties_hashcode()
+        public void Dynamic_class_hash_code()
         {
             var properties = new List<DynamicProperty>()
             {
@@ -39,7 +39,7 @@
         }
 
         [TestMethod]
-        public void Dynamic_properties_equal()
+        public void Dynamic_class_equal()
         {
             var properties = new List<DynamicProperty>()
             {
@@ -61,7 +61,7 @@
         }
 
         [TestMethod]
-        public void Dynamic_properties_not_equal()
+        public void Dynamic_class_not_equal()
         {
             var properties = new List<DynamicProperty>()
             {
@@ -80,6 +80,26 @@
             var result = instance1.Equals(instance2);
 
             Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public void Dynamic_class_with_values()
+        {
+            var properties = new List<DynamicProperty>()
+            {
+                new DynamicProperty("Id", typeof(System.Int32)),
+                new DynamicProperty("Nome", typeof(System.String))
+            };
+
+            var t = ClassFactory.Instance.Create(properties);
+
+            var instance = (dynamic)Activator.CreateInstance(t);
+
+            instance.SetDynamicProperty("Id", 1);
+            instance.SetDynamicProperty("Nome", "Teste");
+
+            Assert.AreEqual(1, instance.GetDynamicProperty("Id"));
+            Assert.AreEqual("Teste", instance.GetDynamicProperty("Nome"));
         }
     }
 }
