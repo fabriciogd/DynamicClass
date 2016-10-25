@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicClass", "DynamicClass\DynamicClass.csproj", "{E2EAB45D-9A9F-47F4-A133-42524E6E742B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicClass.Test", "DynamicClass.Test\DynamicClass.Test.csproj", "{33B8AADF-5585-43CF-86D5-EA0D61DFB45A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Run", "Run\Run.csproj", "{B4DB62F7-3912-4D2E-B25B-F08D98C5471E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{33B8AADF-5585-43CF-86D5-EA0D61DFB45A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{33B8AADF-5585-43CF-86D5-EA0D61DFB45A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{33B8AADF-5585-43CF-86D5-EA0D61DFB45A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4DB62F7-3912-4D2E-B25B-F08D98C5471E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4DB62F7-3912-4D2E-B25B-F08D98C5471E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4DB62F7-3912-4D2E-B25B-F08D98C5471E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4DB62F7-3912-4D2E-B25B-F08D98C5471E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
