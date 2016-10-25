@@ -208,6 +208,7 @@
             genEquals.Emit(OpCodes.Ret);
             genEquals.MarkLabel(equalsLabel);
             genEquals.Emit(OpCodes.Ldc_I4_0);
+            genEquals.Emit(OpCodes.Ret);
 
             genGetHashCode.Emit(OpCodes.Stloc_0);
             genGetHashCode.Emit(OpCodes.Ldloc_0);

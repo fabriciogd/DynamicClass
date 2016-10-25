@@ -37,5 +37,49 @@
 
             Assert.AreNotEqual(0, instance.GetHashCode());
         }
+
+        [TestMethod]
+        public void Dynamic_properties_equal()
+        {
+            var properties = new List<DynamicProperty>()
+            {
+                new DynamicProperty("Id", typeof(System.Int32))
+            };
+
+            var t1 = ClassFactory.Instance.Create(properties);
+            var t2 = ClassFactory.Instance.Create(properties);
+
+            var instance1 = (dynamic)Activator.CreateInstance(t1);
+            var instance2 = (dynamic)Activator.CreateInstance(t1);
+
+            instance1.SetDynamicProperty("Id", 1);
+            instance2.SetDynamicProperty("Id", 1);
+
+            var result = instance1.Equals(instance2);
+
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void Dynamic_properties_not_equal()
+        {
+            var properties = new List<DynamicProperty>()
+            {
+                new DynamicProperty("Id", typeof(System.Int32))
+            };
+
+            var t1 = ClassFactory.Instance.Create(properties);
+            var t2 = ClassFactory.Instance.Create(properties);
+
+            var instance1 = (dynamic)Activator.CreateInstance(t1);
+            var instance2 = (dynamic)Activator.CreateInstance(t1);
+
+            instance1.SetDynamicProperty("Id", 1);
+            instance2.SetDynamicProperty("Id", 2);
+
+            var result = instance1.Equals(instance2);
+
+            Assert.IsFalse(result);
+        }
     }
 }
