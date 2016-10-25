@@ -1,0 +1,40 @@
+﻿namespace DynamicClass
+{
+    using System;
+
+    /// <summary>
+    /// Provides a class for dynamic property.
+    /// </summary>
+    public class DynamicProperty
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DynamicProperty"/> class.
+        /// </summary>
+        /// <param name="name">The name from the property.</param>
+        /// <param name="type">The type from the property.</param>
+        public DynamicProperty(string name, Type type)
+        {
+            if (name == null) throw new ArgumentNullException("name");
+            if (type == null) throw new ArgumentNullException("type");
+
+            this.Name = name;
+            this.Type = type;
+        }
+
+        /// <summary>
+        /// Gets the name from the property.
+        /// </summary>
+        /// <value>
+        /// The name from the property.
+        /// </value>
+        public string Name { get; }
+
+        /// <summary>
+        /// Gets the type from the property.
+        /// </summary>
+        /// <value>
+        /// The type from the property.
+        /// </value>
+        public Type Type { get; }
+    }
+}
