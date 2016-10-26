@@ -101,5 +101,22 @@
             Assert.AreEqual(1, instance.GetDynamicProperty("Id"));
             Assert.AreEqual("Teste", instance.GetDynamicProperty("Nome"));
         }
+
+        [TestMethod]
+        public void Dynamic_class_with_constructor()
+        {
+            var properties = new List<DynamicProperty>()
+            {
+                new DynamicProperty("Id", typeof(System.Int32)),
+                new DynamicProperty("Nome", typeof(System.String))
+            };
+
+            var t = ClassFactory.Instance.Create(properties);
+
+            var instance = (dynamic)Activator.CreateInstance(t, 1, "Teste");
+
+            Assert.AreEqual(1, instance.GetDynamicProperty("Id"));
+            Assert.AreEqual("Teste", instance.GetDynamicProperty("Nome"));
+        }
     }
 }

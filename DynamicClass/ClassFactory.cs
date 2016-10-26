@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Threading;
@@ -32,15 +33,15 @@
         }
 
         private readonly ModuleBuilder module;
-        private ReaderWriterLock rwLock;
+        private ReaderWriterLock readWriteLock;
         private Dictionary<Signature, Type> classes;
 
         private ClassFactory()
         {
-            module = CreateModule();
+            this.module = CreateModule();
 
-            classes = new Dictionary<Signature, Type>();
-            rwLock = new ReaderWriterLock();
+            this.classes = new Dictionary<Signature, Type>();
+            this.readWriteLock = new ReaderWriterLock();
         }
 
         private ModuleBuilder CreateModule()
@@ -63,14 +64,14 @@
         /// </summary>
         public Type Create(IEnumerable<DynamicProperty> properties)
         {
-            rwLock.AcquireReaderLock(Timeout.Infinite);
+            readWriteLock.AcquireReaderLock(Timeout.Infinite);
             try
             {
                 Signature signature = new Signature(properties);
                 Type type;
                 if (!classes.TryGetValue(signature, out type))
                 {
-                    LockCookie cookie = rwLock.UpgradeToWriterLock(Timeout.Infinite);
+                    LockCookie cookie = readWriteLock.UpgradeToWriterLock(Timeout.Infinite);
                     try
                     {
                         if (!classes.TryGetValue(signature, out type))
@@ -81,14 +82,14 @@
                     }
                     finally
                     {
-                        rwLock.DowngradeFromWriterLock(ref cookie);
+                        readWriteLock.DowngradeFromWriterLock(ref cookie);
                     }
                 }
                 return type;
             }
             finally
             {
-                rwLock.ReleaseReaderLock();
+                readWriteLock.ReleaseReaderLock();
             }
         }
 
@@ -99,9 +100,11 @@
             TypeBuilder tb = this.module.DefineType(typeName, TypeAttributes.Class |
                    TypeAttributes.Public, typeof(DynamicClass));
 
-            FieldInfo[] fields = GenerateProperties(tb, properties);
+            FieldInfo[] fields = this.GenerateProperties(tb, properties);
 
             this.GenerateMethods(tb, fields);
+            this.GenerateDefaultConstructor(tb);
+            this.GenerateConstructorWithParameters(tb, fields);
 
             return tb.CreateType();
         }
@@ -124,9 +127,9 @@
                 MethodBuilder getter = tb.DefineMethod($"get_{dp.Name}", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, CallingConventions.HasThis, dp.Type, Type.EmptyTypes);
 
                 ILGenerator genGetter = getter.GetILGenerator();
-                genGetter.Emit(OpCodes.Ldarg_0);
-                genGetter.Emit(OpCodes.Ldfld, fb);
-                genGetter.Emit(OpCodes.Ret);
+                genGetter.Emit(OpCodes.Ldarg_0); // This
+                genGetter.Emit(OpCodes.Ldfld, fb); // Field.Value
+                genGetter.Emit(OpCodes.Ret); //This.Field
 
                 pb.SetGetMethod(getter);
 
@@ -136,10 +139,10 @@
                 mbSet.DefineParameter(1, ParameterAttributes.In, dp.Name);
 
                 ILGenerator genSet = mbSet.GetILGenerator();
-                genSet.Emit(OpCodes.Ldarg_0);
-                genSet.Emit(OpCodes.Ldarg_1);
-                genSet.Emit(OpCodes.Stfld, fb);
-                genSet.Emit(OpCodes.Ret);
+                genSet.Emit(OpCodes.Ldarg_0); //This
+                genSet.Emit(OpCodes.Ldarg_1); //Value
+                genSet.Emit(OpCodes.Stfld, fb); //This.Field = value
+                genSet.Emit(OpCodes.Ret); //Void
 
                 pb.SetSetMethod(mbSet);
 
@@ -213,6 +216,56 @@
             genGetHashCode.Emit(OpCodes.Stloc_0);
             genGetHashCode.Emit(OpCodes.Ldloc_0);
             genGetHashCode.Emit(OpCodes.Ret);
+        }
+
+        private void GenerateDefaultConstructor(TypeBuilder tb)
+        {
+            ConstructorBuilder defaultConstructor = tb.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.HasThis, Type.EmptyTypes);
+
+            ILGenerator genDefaultConstructor = defaultConstructor.GetILGenerator();
+            genDefaultConstructor.Emit(OpCodes.Ldarg_0);
+            genDefaultConstructor.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
+            genDefaultConstructor.Emit(OpCodes.Ret);
+        }
+
+        private void GenerateConstructorWithParameters(TypeBuilder tb, FieldInfo[] fields)
+        {
+            ConstructorBuilder constructor = tb.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.HasThis, fields.Select(p => p.FieldType).ToArray());
+
+            ILGenerator genConstructor = constructor.GetILGenerator();
+            genConstructor.Emit(OpCodes.Ldarg_0);
+            genConstructor.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                constructor.DefineParameter(i + 1, ParameterAttributes.None, fields[i].Name);
+                genConstructor.Emit(OpCodes.Ldarg_0);
+
+                if (i == 0)
+                {
+                    genConstructor.Emit(OpCodes.Ldarg_1);
+                }
+                else if (i == 1)
+                {
+                    genConstructor.Emit(OpCodes.Ldarg_2);
+                }
+                else if (i == 2)
+                {
+                    genConstructor.Emit(OpCodes.Ldarg_3);
+                }
+                else if (i < 255)
+                {
+                    genConstructor.Emit(OpCodes.Ldarg_S, (byte)(i + 1));
+                }
+                else
+                {
+                    genConstructor.Emit(OpCodes.Ldarg, unchecked((short)(i + 1)));
+                }
+
+                genConstructor.Emit(OpCodes.Stfld, fields[i]);
+            }
+
+            genConstructor.Emit(OpCodes.Ret);
         }
     }
 }
