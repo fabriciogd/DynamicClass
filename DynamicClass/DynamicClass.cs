@@ -53,12 +53,13 @@ namespace DynamicClass
         /// <param name="value">The value.</param>
         public void SetDynamicProperty(string propertyName, object value)
         {
-            var type = GetType();
-            var propInfo = type.GetProperty(propertyName);
-
-            propInfo.SetValue(this, value, null);
+            SetDynamicProperty<object>(propertyName, value);
         }
 
+        /// <summary>
+        /// Overrides the ToString() method
+        /// </summary>
+        /// <returns>Returns properties in string format</returns>
         public override string ToString()
         {
             PropertyInfo[] props = this.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);

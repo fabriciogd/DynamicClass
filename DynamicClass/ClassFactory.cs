@@ -44,6 +44,10 @@
             this.readWriteLock = new ReaderWriterLock();
         }
 
+        /// <summary>
+        /// This method defines dynamic assembly
+        /// </summary>
+        /// <returns>Returns created module</returns>
         private ModuleBuilder CreateModule()
         {
             AssemblyBuilder dynamicAssembly =
@@ -93,6 +97,11 @@
             }
         }
 
+        /// <summary>
+        /// This method generates a dynamic class with properties, methos and constructors
+        /// </summary>
+        /// <param name="properties">A list of <see cref="DynamicProperty"/></param>
+        /// <returns>Created type</returns>
         private Type GenerateClass(DynamicProperty[] properties)
         {
             string typeName = "DynamicClass" + (classes.Count + 1);
@@ -109,6 +118,12 @@
             return tb.CreateType();
         }
 
+        /// <summary>
+        /// This method generates properties and fields
+        /// </summary>
+        /// <param name="tb">Represents the new type</param>
+        /// <param name="properties">A list of <see cref="DynamicProperty"/></param>
+        /// <returns>A list of <see cref="FieldInfo"/></returns>
         public FieldInfo[] GenerateProperties(TypeBuilder tb, DynamicProperty[] properties)
         {
             FieldInfo[] fields = new FieldBuilder[properties.Length];
@@ -152,6 +167,11 @@
             return fields;
         }
 
+        /// <summary>
+        /// This method generates the Equals and GetHashCode methods
+        /// </summary>
+        /// <param name="tb">Represents the new type</param>
+        /// <param name="properties">A list of <see cref="DynamicProperty"/></param>
         private void GenerateMethods(TypeBuilder tb, FieldInfo[] fields)
         {
             // Equals()
@@ -218,6 +238,10 @@
             genGetHashCode.Emit(OpCodes.Ret);
         }
 
+        /// <summary>
+        /// This method generates a default constructor
+        /// </summary>
+        /// <param name="tb">Represents the new type</param>
         private void GenerateDefaultConstructor(TypeBuilder tb)
         {
             ConstructorBuilder defaultConstructor = tb.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.HasThis, Type.EmptyTypes);
@@ -228,6 +252,11 @@
             genDefaultConstructor.Emit(OpCodes.Ret);
         }
 
+        /// <summary>
+        /// This method generates constructor with parameters
+        /// </summary>
+        /// <param name="tb">Represents the new type</param>
+        /// <param name="properties">A list of <see cref="DynamicProperty"/></param>
         private void GenerateConstructorWithParameters(TypeBuilder tb, FieldInfo[] fields)
         {
             ConstructorBuilder constructor = tb.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.HasThis, fields.Select(p => p.FieldType).ToArray());

@@ -83,7 +83,7 @@
         }
 
         [TestMethod]
-        public void Dynamic_class_with_values()
+        public void Dynamic_class_set_properties()
         {
             var properties = new List<DynamicProperty>()
             {

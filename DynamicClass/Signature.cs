@@ -4,6 +4,9 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    /// <summary>
+    /// Represents a signature of <see cref="DynamicClass"/>
+    /// </summary>
     internal class Signature : IEquatable<Signature>
     {
         public DynamicProperty[] properties;
